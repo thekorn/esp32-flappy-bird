@@ -1,16 +1,16 @@
 find_program(ZIG zig REQUIRED)
 
-set(ZIG_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/main.zig")
-set(ZIG_OBJECT "${CMAKE_CURRENT_BINARY_DIR}/main_zig.o")
+set(ZIG_BUILD_FILE "${PROJECT_DIR}/build.zig")
+set(ZIG_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/zig-out")
+set(ZIG_OBJECT "${ZIG_INSTALL_DIR}/main_zig.o")
 
 if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     add_custom_command(
         OUTPUT "${ZIG_OBJECT}"
-        COMMAND "${ZIG}" build-obj "${ZIG_SOURCE}"
-                -target xtensa-freestanding-none
-                -mcpu=esp32s3
-                "-femit-bin=${ZIG_OBJECT}"
-        DEPENDS "${ZIG_SOURCE}"
+        COMMAND "${ZIG}" build
+                --build-file "${ZIG_BUILD_FILE}"
+                --prefix "${ZIG_INSTALL_DIR}"
+        DEPENDS "${ZIG_BUILD_FILE}" "${CMAKE_CURRENT_SOURCE_DIR}/main.zig"
         COMMENT "Building Zig application for ESP32-S3"
         VERBATIM
     )
