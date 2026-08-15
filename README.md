@@ -23,6 +23,10 @@ adapter around the C APIs provided by ESP-IDF and LVGL: it initializes the
 display and touch buses, flushes LVGL draw buffers, reads the touch controller,
 and exposes timing and label operations to Zig.
 
+[`build.zig`](build.zig) owns compilation of the Zig application object.
+ESP-IDF's CMake build invokes it before linking that object with the platform
+adapter and the required ESP-IDF components.
+
 The build uses:
 
 - ESP-IDF 5.5.2;
