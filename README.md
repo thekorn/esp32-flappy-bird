@@ -1,27 +1,25 @@
-# ESP32-S3 Zig + LVGL hello world
+# Flappy Bird for ESP32-S3 + Zig + LVGL
 
-An interactive graphical hello world written in Zig for the Waveshare
-ESP32-S3-Touch-LCD-1.47.
+A touch-controlled Flappy Bird game written in Zig for the Waveshare
+ESP32-S3-Touch-LCD-1.47. Hold the device in landscape orientation and tap the
+screen to make the bird flap through the pipes.
 
 ## Current state
 
-The firmware:
-
-- renders `hello world` in the center of the display with LVGL;
-- changes the label to `touched` when the screen is pressed;
-- restores `hello world` after two seconds; and
-- polls the capacitive touch controller over I²C.
+The firmware rotates the 172×320 LCD by 90 degrees into a 320×172 game area,
+polls the capacitive touch controller over I²C, and implements flap physics,
+randomized pipes, collision detection, scoring, and tap-to-restart gameplay.
 
 It builds with the pinned toolchain, has been flashed to the real board, and
-boots stably with its 8 MB PSRAM detected. The display and touch hardware were
-exercised with the original C application; after moving the application state
-machine to Zig, the resulting firmware build and boot were validated again.
+boots stably with its 8 MB PSRAM detected. Confirm the landscape layout and
+touch gameplay on the physical LCD after flashing, since serial monitoring
+cannot observe either behavior.
 
 The application entry point and UI state machine live in
 [`main/main.zig`](main/main.zig). [`main/platform.c`](main/platform.c) is a thin
 adapter around the C APIs provided by ESP-IDF and LVGL: it initializes the
 display and touch buses, flushes LVGL draw buffers, reads the touch controller,
-and exposes timing and label operations to Zig.
+and renders the game state supplied by Zig.
 
 The build uses:
 
@@ -101,8 +99,9 @@ Replace `/dev/ttyACM0` with the port assigned to the board. Flashing resets
 the board and starts the firmware automatically. Exit the monitor with
 `Ctrl-]`.
 
-After startup, the display should show `hello world`. Touch the display to see
-`touched`; it changes back after two seconds.
+After startup, the display should show the Flappy Bird start screen in
+landscape orientation. Tap anywhere to start and tap again whenever the bird
+needs to flap. After a collision, tap to start a new game.
 
 To remove generated configuration and build output before rebuilding:
 

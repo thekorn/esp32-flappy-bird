@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "driver/gpio.h"
 #include "driver/i2c_master.h"
@@ -14,10 +15,17 @@
 #include "freertos/task.h"
 #include "lvgl.h"
 
-#define LCD_WIDTH 172
-#define LCD_HEIGHT 320
-#define LCD_X_OFFSET 34
-#define LCD_BUFFER_LINES 40
+#define LCD_WIDTH 320
+#define LCD_HEIGHT 172
+#define LCD_Y_OFFSET 34
+#define LCD_BUFFER_LINES 24
+
+#define BIRD_X 58
+#define BIRD_WIDTH 18
+#define BIRD_HEIGHT 14
+#define PIPE_WIDTH 28
+#define PIPE_GAP 58
+#define GROUND_Y 154
 
 #define LCD_HOST SPI2_HOST
 #define LCD_PIN_SCLK GPIO_NUM_38
@@ -40,11 +48,15 @@ typedef struct {
     uint16_t delay_ms;
 } lcd_init_command_t;
 
-static const char *TAG = "hello_lvgl";
+static const char *TAG = "flappy_bird";
 static esp_lcd_panel_io_handle_t lcd_io;
 static i2c_master_dev_handle_t touch_device;
 static lv_disp_drv_t display_driver;
-static lv_obj_t *label;
+static lv_obj_t *bird;
+static lv_obj_t *upper_pipes[2];
+static lv_obj_t *lower_pipes[2];
+static lv_obj_t *score_label;
+static lv_obj_t *message_label;
 
 static const lcd_init_command_t lcd_init_commands[] = {
     {0x11, {}, 0, 120},
@@ -80,7 +92,7 @@ static const lcd_init_command_t lcd_init_commands[] = {
     {0xDE, {0x02}, 1, 0},
     {0xE5, {0x00, 0x02, 0x00}, 3, 0},
     {0xDE, {0x00}, 1, 0},
-    {0x36, {0x00}, 1, 0},
+    {0x36, {0x60}, 1, 0},
     {0x21, {}, 0, 10},
     {0x29, {}, 0, 0},
 };
@@ -152,10 +164,11 @@ static void lcd_init(void)
 static void display_flush(lv_disp_drv_t *driver, const lv_area_t *area,
                           lv_color_t *pixels)
 {
-    const uint16_t x_start = area->x1 + LCD_X_OFFSET;
-    const uint16_t x_end = area->x2 + LCD_X_OFFSET;
-    const uint8_t columns[] = {x_start >> 8, x_start & 0xff, x_end >> 8, x_end & 0xff};
-    const uint8_t rows[] = {area->y1 >> 8, area->y1 & 0xff, area->y2 >> 8, area->y2 & 0xff};
+    const uint16_t y_start = area->y1 + LCD_Y_OFFSET;
+    const uint16_t y_end = area->y2 + LCD_Y_OFFSET;
+    const uint8_t columns[] = {area->x1 >> 8, area->x1 & 0xff,
+                               area->x2 >> 8, area->x2 & 0xff};
+    const uint8_t rows[] = {y_start >> 8, y_start & 0xff, y_end >> 8, y_end & 0xff};
     const size_t pixel_count = (area->x2 - area->x1 + 1) * (area->y2 - area->y1 + 1);
 
     ESP_ERROR_CHECK(esp_lcd_panel_io_tx_param(lcd_io, 0x2A, columns, sizeof(columns)));
@@ -233,9 +246,63 @@ static void lvgl_init(void)
     display_driver.draw_buf = &draw_buffer;
     lv_disp_drv_register(&display_driver);
 
-    label = lv_label_create(lv_scr_act());
-    lv_label_set_text(label, "");
-    lv_obj_center(label);
+    lv_obj_t *screen = lv_scr_act();
+    lv_obj_set_style_bg_color(screen, lv_color_hex(0x70C5CE), 0);
+    lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
+
+    for (size_t i = 0; i < 2; i++) {
+        upper_pipes[i] = lv_obj_create(screen);
+        lower_pipes[i] = lv_obj_create(screen);
+        lv_obj_clear_flag(upper_pipes[i], LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_clear_flag(lower_pipes[i], LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_bg_color(upper_pipes[i], lv_color_hex(0x54C84D), 0);
+        lv_obj_set_style_bg_color(lower_pipes[i], lv_color_hex(0x54C84D), 0);
+        lv_obj_set_style_border_color(upper_pipes[i], lv_color_hex(0x27852C), 0);
+        lv_obj_set_style_border_color(lower_pipes[i], lv_color_hex(0x27852C), 0);
+        lv_obj_set_style_border_width(upper_pipes[i], 2, 0);
+        lv_obj_set_style_border_width(lower_pipes[i], 2, 0);
+        lv_obj_set_style_radius(upper_pipes[i], 3, 0);
+        lv_obj_set_style_radius(lower_pipes[i], 3, 0);
+    }
+
+    lv_obj_t *ground = lv_obj_create(screen);
+    lv_obj_set_pos(ground, 0, GROUND_Y);
+    lv_obj_set_size(ground, LCD_WIDTH, LCD_HEIGHT - GROUND_Y);
+    lv_obj_clear_flag(ground, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(ground, lv_color_hex(0xDED895), 0);
+    lv_obj_set_style_border_color(ground, lv_color_hex(0x77B255), 0);
+    lv_obj_set_style_border_width(ground, 3, 0);
+    lv_obj_set_style_radius(ground, 0, 0);
+
+    bird = lv_obj_create(screen);
+    lv_obj_set_pos(bird, BIRD_X, 72);
+    lv_obj_set_size(bird, BIRD_WIDTH, BIRD_HEIGHT);
+    lv_obj_clear_flag(bird, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(bird, lv_color_hex(0xFFD83D), 0);
+    lv_obj_set_style_border_color(bird, lv_color_hex(0xC47C18), 0);
+    lv_obj_set_style_border_width(bird, 2, 0);
+    lv_obj_set_style_radius(bird, LV_RADIUS_CIRCLE, 0);
+
+    lv_obj_t *eye = lv_obj_create(bird);
+    lv_obj_set_pos(eye, 11, 2);
+    lv_obj_set_size(eye, 4, 4);
+    lv_obj_clear_flag(eye, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(eye, lv_color_black(), 0);
+    lv_obj_set_style_border_width(eye, 0, 0);
+    lv_obj_set_style_radius(eye, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_pad_all(eye, 0, 0);
+
+    score_label = lv_label_create(screen);
+    lv_obj_set_style_text_color(score_label, lv_color_white(), 0);
+    lv_obj_set_style_text_align(score_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(score_label, 60);
+    lv_obj_align(score_label, LV_ALIGN_TOP_MID, 0, 5);
+
+    message_label = lv_label_create(screen);
+    lv_obj_set_style_text_color(message_label, lv_color_hex(0x174E57), 0);
+    lv_obj_set_style_text_align(message_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(message_label, 150);
+    lv_obj_align(message_label, LV_ALIGN_CENTER, 25, 0);
 
     const esp_timer_create_args_t tick_timer_args = {
         .callback = lv_tick,
@@ -248,16 +315,42 @@ static void lvgl_init(void)
 
 void platform_init(void)
 {
-    ESP_LOGI(TAG, "Starting Zig LVGL hello world");
+    ESP_LOGI(TAG, "Starting Zig Flappy Bird");
     lcd_init();
     touch_init();
     lvgl_init();
 }
 
-void platform_set_label(const char *text)
+static void position_pipe(lv_obj_t *upper, lv_obj_t *lower, int16_t x, int16_t gap_y)
 {
-    lv_label_set_text(label, text);
-    lv_obj_center(label);
+    lv_obj_set_pos(upper, x, -2);
+    lv_obj_set_size(upper, PIPE_WIDTH, gap_y + 2);
+    lv_obj_set_pos(lower, x, gap_y + PIPE_GAP);
+    lv_obj_set_size(lower, PIPE_WIDTH, GROUND_Y - gap_y - PIPE_GAP + 2);
+}
+
+void platform_render_game(int16_t bird_y,
+                          int16_t pipe_1_x, int16_t pipe_1_gap_y,
+                          int16_t pipe_2_x, int16_t pipe_2_gap_y,
+                          uint16_t score, uint8_t state)
+{
+    char score_text[8];
+    snprintf(score_text, sizeof(score_text), "%u", score);
+
+    lv_obj_set_y(bird, bird_y);
+    position_pipe(upper_pipes[0], lower_pipes[0], pipe_1_x, pipe_1_gap_y);
+    position_pipe(upper_pipes[1], lower_pipes[1], pipe_2_x, pipe_2_gap_y);
+    lv_label_set_text(score_label, score_text);
+
+    if (state == 0) {
+        lv_label_set_text(message_label, "FLAPPY BIRD\nTap to fly");
+        lv_obj_clear_flag(message_label, LV_OBJ_FLAG_HIDDEN);
+    } else if (state == 2) {
+        lv_label_set_text(message_label, "GAME OVER\nTap to retry");
+        lv_obj_clear_flag(message_label, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(message_label, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 uint64_t platform_millis(void)
