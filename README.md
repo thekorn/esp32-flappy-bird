@@ -116,9 +116,8 @@ clicks and the space bar act as simulated screen taps. From the repository
 root, enter the Nix environment and build and run it with:
 
 ```sh
-cmake -S simulator -B build/simulator -G Ninja
-cmake --build build/simulator
-./build/simulator/flappy-bird-simulator
+zig build -Dsimulator=true
+zig build run -Dsimulator=true
 ```
 
 The simulator validates game behavior and the LVGL layout, but not the ESP32,

@@ -2,56 +2,29 @@ const std = @import("std");
 
 pub fn build(b: *std.Build) void {
     const simulator = b.option(bool, "simulator", "Build for the native Linux simulator") orelse false;
-    const target = if (simulator)
-        b.standardTargetOptions(.{})
-    else
-        b.resolveTargetQuery(.{
-            .cpu_arch = .xtensa,
-            .os_tag = .freestanding,
-            .abi = .none,
-            .cpu_model = .{ .explicit = &std.Target.xtensa.cpu.esp32s3 },
-        });
     const optimize = b.standardOptimizeOption(.{});
 
-    const root_source_file = if (simulator)
-        b.path("simulator/main.zig")
-    else
-        b.path("main/main.zig");
-    const root_module = b.createModule(.{
-        .root_source_file = root_source_file,
-        .target = target,
-        .optimize = optimize,
-        .pic = simulator,
-    });
-
     if (simulator) {
-        const sdl_include = b.option([]const u8, "sdl-include", "SDL2 header directory") orelse
-            @panic("-Dsdl-include is required for the simulator");
-        const lvgl_include = b.option([]const u8, "lvgl-include", "LVGL source directory") orelse
-            @panic("-Dlvgl-include is required for the simulator");
-        const c_bindings = b.addTranslateC(.{
-            .root_source_file = b.path("simulator/bindings.h"),
-            .target = target,
-            .optimize = optimize,
-        });
-        c_bindings.addSystemIncludePath(b.graph.cwdRelativePath(sdl_include));
-        c_bindings.addSystemIncludePath(b.graph.cwdRelativePath(lvgl_include));
-        c_bindings.addSystemIncludePath(b.path("simulator"));
-        c_bindings.defineCMacro("LV_CONF_INCLUDE_SIMPLE", null);
-        c_bindings.defineCMacro("LV_LVGL_H_INCLUDE_SIMPLE", null);
-        c_bindings.defineCMacro("SDL_DISABLE_IMMINTRIN_H", null);
-        root_module.addImport("c", c_bindings.createModule());
-        root_module.addImport("game", b.createModule(.{
+        buildSimulator(b, optimize);
+    } else {
+        buildFirmware(b, optimize);
+    }
+}
+
+fn buildFirmware(b: *std.Build, optimize: std.builtin.OptimizeMode) void {
+    const target = b.resolveTargetQuery(.{
+        .cpu_arch = .xtensa,
+        .os_tag = .freestanding,
+        .abi = .none,
+        .cpu_model = .{ .explicit = &std.Target.xtensa.cpu.esp32s3 },
+    });
+    const application = b.addObject(.{
+        .name = "main_zig",
+        .root_module = b.createModule(.{
             .root_source_file = b.path("main/main.zig"),
             .target = target,
             .optimize = optimize,
-            .pic = true,
-        }));
-    }
-
-    const application = b.addObject(.{
-        .name = "main_zig",
-        .root_module = root_module,
+        }),
     });
 
     const install_application = b.addInstallArtifact(application, .{
@@ -59,4 +32,104 @@ pub fn build(b: *std.Build) void {
         .dest_sub_path = "main_zig.o",
     });
     b.getInstallStep().dependOn(&install_application.step);
+}
+
+fn buildSimulator(b: *std.Build, optimize: std.builtin.OptimizeMode) void {
+    const target = b.standardTargetOptions(.{});
+    const lvgl_source_dir = b.graph.environ_map.get("LVGL_SOURCE_DIR") orelse
+        @panic("LVGL_SOURCE_DIR is not set; run inside `nix develop`");
+    const sdl_include_dir = b.graph.environ_map.get("SDL2_INCLUDE_DIR") orelse
+        @panic("SDL2_INCLUDE_DIR is not set; run inside `nix develop`");
+    const sdl_library_dir = b.graph.environ_map.get("SDL2_LIBRARY_DIR") orelse
+        @panic("SDL2_LIBRARY_DIR is not set; run inside `nix develop`");
+    const root_module = b.createModule(.{
+        .root_source_file = b.path("simulator/main.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+        // The final native link is performed by the Nix C compiler so SDL and
+        // libc come from one coherent runtime. Do not emit Zig's C sanitizer
+        // calls, whose runtime would otherwise need to be linked separately.
+        .sanitize_c = .off,
+    });
+
+    const c_bindings = b.addTranslateC(.{
+        .root_source_file = b.path("simulator/bindings.h"),
+        .target = target,
+        .optimize = optimize,
+    });
+    c_bindings.addSystemIncludePath(b.graph.cwdRelativePath(sdl_include_dir));
+    c_bindings.defineCMacro("SDL_DISABLE_IMMINTRIN_H", null);
+    root_module.addImport("c", c_bindings.createModule());
+    root_module.addImport("game", b.createModule(.{
+        .root_source_file = b.path("main/main.zig"),
+        .target = target,
+        .optimize = optimize,
+    }));
+
+    root_module.addSystemIncludePath(b.graph.cwdRelativePath(lvgl_source_dir));
+    root_module.addSystemIncludePath(b.graph.cwdRelativePath(sdl_include_dir));
+    root_module.addSystemIncludePath(b.path("simulator"));
+    const c_flags = &.{
+        "-std=c11",
+        "-DLV_CONF_INCLUDE_SIMPLE",
+        "-DLV_LVGL_H_INCLUDE_SIMPLE",
+        "-DSDL_DISABLE_IMMINTRIN_H",
+    };
+    root_module.addCSourceFiles(.{
+        .root = b.graph.cwdRelativePath(lvgl_source_dir),
+        .files = findLvglSources(b, lvgl_source_dir),
+        .flags = c_flags,
+    });
+    root_module.addCSourceFile(.{
+        .file = b.path("simulator/bindings.c"),
+        .flags = c_flags,
+    });
+
+    const simulator_object = b.addObject(.{
+        .name = "flappy-bird-simulator-object",
+        .root_module = root_module,
+    });
+    const linker = b.addSystemCommand(&.{"cc"});
+    linker.addArtifactArg(simulator_object);
+    linker.addArg("-o");
+    const simulator = linker.addOutputFileArg("flappy-bird-simulator");
+    linker.addArgs(&.{
+        b.fmt("-L{s}", .{sdl_library_dir}),
+        b.fmt("-Wl,-rpath,{s}", .{sdl_library_dir}),
+        "-Wl,-z,noexecstack",
+        "-lSDL2",
+        "-lm",
+    });
+
+    const install_simulator = b.addInstallFileWithDir(simulator, .bin, "flappy-bird-simulator");
+    b.getInstallStep().dependOn(&install_simulator.step);
+
+    const run_simulator = b.addRunFile(simulator);
+    const run_step = b.step("run", "Run the native simulator");
+    run_step.dependOn(&run_simulator.step);
+}
+
+fn findLvglSources(b: *std.Build, lvgl_source_dir: []const u8) []const []const u8 {
+    const source_dir_path = b.pathJoin(&.{ lvgl_source_dir, "src" });
+    var source_dir = std.Io.Dir.cwd().openDir(b.graph.io, source_dir_path, .{ .iterate = true }) catch
+        @panic("unable to open LVGL source directory");
+    defer source_dir.close(b.graph.io);
+
+    var walker = source_dir.walk(b.graph.arena) catch @panic("unable to walk LVGL sources");
+    defer walker.deinit();
+
+    var sources: std.ArrayList([]const u8) = .empty;
+    while (walker.next(b.graph.io) catch @panic("unable to walk LVGL sources")) |entry| {
+        if (entry.kind == .file and std.mem.endsWith(u8, entry.path, ".c")) {
+            sources.append(b.graph.arena, b.fmt("src/{s}", .{entry.path})) catch @panic("OOM");
+        }
+    }
+
+    std.mem.sort([]const u8, sources.items, {}, struct {
+        fn lessThan(_: void, lhs: []const u8, rhs: []const u8) bool {
+            return std.mem.lessThan(u8, lhs, rhs);
+        }
+    }.lessThan);
+    return sources.items;
 }

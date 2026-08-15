@@ -71,6 +71,8 @@
               pkgs.SDL2
             ];
             LVGL_SOURCE_DIR = lvgl-source;
+            SDL2_INCLUDE_DIR = "${pkgs.SDL2.dev}/include";
+            SDL2_LIBRARY_DIR = "${pkgs.SDL2}/lib";
             shellHook = ''
               echo "ESP32-S3 environment: ESP-IDF $(idf.py --version | sed 's/^ESP-IDF //'), Zig $(zig version)"
             '';
