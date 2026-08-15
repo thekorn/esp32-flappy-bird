@@ -1,7 +1,8 @@
 #pragma once
 
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 typedef struct {
     int16_t x1;
