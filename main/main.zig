@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const lcd_width = 320;
 const lcd_height = 172;
@@ -87,6 +88,48 @@ fn overlapsPipe(bird_y: i32, pipe: Pipe) bool {
     const horizontal_overlap = bird_x + bird_width > pipe_x and bird_x < pipe_x + pipe_width;
     const vertical_overlap = bird_y < pipe.gap_y or bird_y + bird_height > pipe.gap_y + pipe_gap;
     return horizontal_overlap and vertical_overlap;
+}
+
+test "gap positions stay within the playable area" {
+    const previous_random_state = random_state;
+    defer random_state = previous_random_state;
+
+    for (0..1_000) |_| {
+        const gap_y = nextGapY();
+        try std.testing.expect(gap_y >= 18);
+        try std.testing.expect(gap_y <= 78);
+        try std.testing.expect(gap_y + pipe_gap < ground_y);
+    }
+}
+
+test "reset pipes uses the configured spacing" {
+    const previous_random_state = random_state;
+    defer random_state = previous_random_state;
+
+    const pipes = resetPipes();
+    try std.testing.expectEqual(@as(i32, pipe_spacing * 1_000), pipes[1].x_milli - pipes[0].x_milli);
+    try std.testing.expect(!pipes[0].scored);
+    try std.testing.expect(!pipes[1].scored);
+}
+
+test "bird does not collide while inside a pipe gap" {
+    const pipe = Pipe{ .x_milli = bird_x * 1_000, .gap_y = 40, .scored = false };
+
+    try std.testing.expect(!overlapsPipe(40, pipe));
+    try std.testing.expect(!overlapsPipe(40 + pipe_gap - bird_height, pipe));
+}
+
+test "bird collides with pipe outside the gap" {
+    const pipe = Pipe{ .x_milli = bird_x * 1_000, .gap_y = 40, .scored = false };
+
+    try std.testing.expect(overlapsPipe(39, pipe));
+    try std.testing.expect(overlapsPipe(40 + pipe_gap - bird_height + 1, pipe));
+}
+
+test "bird does not collide after clearing a pipe" {
+    const pipe = Pipe{ .x_milli = (bird_x - pipe_width) * 1_000, .gap_y = 40, .scored = false };
+
+    try std.testing.expect(!overlapsPipe(0, pipe));
 }
 
 fn stylePipe(pipe: *LvObj) void {
@@ -181,7 +224,7 @@ fn render(bird_y_milli: i32, pipes: [2]Pipe, score: u16, state: GameState) void 
     }
 }
 
-pub export fn app_main() void {
+pub fn app_main() callconv(.c) void {
     platform_init();
     ui = createUi();
 
@@ -256,5 +299,11 @@ pub export fn app_main() void {
 
         was_pressed = is_pressed;
         platform_run();
+    }
+}
+
+comptime {
+    if (!builtin.is_test) {
+        @export(&app_main, .{ .name = "app_main" });
     }
 }

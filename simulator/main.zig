@@ -1,5 +1,6 @@
 const game = @import("game");
 const c = @import("c");
+const input = @import("input.zig");
 
 const lcd_width = 320;
 const lcd_height = 172;
@@ -107,16 +108,25 @@ export fn platform_run() void {
         switch (event.type) {
             c.SDL_EVENT_QUIT => c.exit(c.EXIT_SUCCESS),
             c.SDL_EVENT_MOUSE_BUTTON_DOWN => {
-                if (event.button.button == c.SDL_BUTTON_LEFT) pressed = true;
+                if (event.button.button == c.SDL_BUTTON_LEFT) {
+                    pressed = input.nextPressed(pressed, .mouse_button_down);
+                }
             },
             c.SDL_EVENT_MOUSE_BUTTON_UP => {
-                if (event.button.button == c.SDL_BUTTON_LEFT) pressed = false;
+                if (event.button.button == c.SDL_BUTTON_LEFT) {
+                    pressed = input.nextPressed(pressed, .mouse_button_up);
+                }
             },
             c.SDL_EVENT_KEY_DOWN => {
-                if (event.key.key == c.SDLK_SPACE and !event.key.repeat) pressed = true;
+                if (event.key.key == c.SDLK_SPACE) {
+                    const input_event: input.Event = if (event.key.repeat) .space_repeat else .space_down;
+                    pressed = input.nextPressed(pressed, input_event);
+                }
             },
             c.SDL_EVENT_KEY_UP => {
-                if (event.key.key == c.SDLK_SPACE) pressed = false;
+                if (event.key.key == c.SDLK_SPACE) {
+                    pressed = input.nextPressed(pressed, .space_up);
+                }
             },
             else => {},
         }

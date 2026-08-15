@@ -95,6 +95,12 @@ firmware with:
 idf.py build
 ```
 
+Run the host-side Zig tests with:
+
+```sh
+zig build test
+```
+
 Connect the board over USB-C, then flash it and open the serial monitor:
 
 ```sh

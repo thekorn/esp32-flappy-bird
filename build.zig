@@ -5,6 +5,28 @@ pub fn build(b: *std.Build) void {
     const simulator = b.option(bool, "simulator", "Build the native simulator") orelse false;
     const optimize = b.standardOptimizeOption(.{});
 
+    const game_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("main/main.zig"),
+            .target = b.graph.host,
+            .optimize = optimize,
+        }),
+        .test_runner = .{ .path = b.path("test_runner.zig"), .mode = .simple },
+    });
+    const run_game_tests = b.addRunArtifact(game_tests);
+    const simulator_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("simulator/input.zig"),
+            .target = b.graph.host,
+            .optimize = optimize,
+        }),
+        .test_runner = .{ .path = b.path("test_runner.zig"), .mode = .simple },
+    });
+    const run_simulator_tests = b.addRunArtifact(simulator_tests);
+    run_simulator_tests.step.dependOn(&run_game_tests.step);
+    const test_step = b.step("test", "Run the Zig tests");
+    test_step.dependOn(&run_simulator_tests.step);
+
     if (simulator) {
         buildSimulator(b, optimize);
     } else {

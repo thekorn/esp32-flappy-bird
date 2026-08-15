@@ -21,6 +21,8 @@
 - Use the Nix flake development environment; do not rely on globally installed
   ESP-IDF or Zig versions.
 - Build with `nix develop -c idf.py build`.
+- Before every commit, run `nix develop -c zig build test` and ensure all Zig
+  tests pass.
 - Use `nix flake check --no-build` when changing the flake.
 - Before every commit, run `codebook-lsp lint --unique -s .` and ensure the
   spell check passes.
