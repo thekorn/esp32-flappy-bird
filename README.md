@@ -21,37 +21,36 @@ so this project deliberately uses the experimental
 [`zig-espressif-bootstrap`](https://github.com/kassane/zig-espressif-bootstrap)
 compiler rather than the ordinary Nixpkgs Zig package.
 
-## Start an ESP-IDF experiment
+## Build the Zig hello-world firmware
 
 Inside `nix develop`:
 
 ```sh
-idf.py create-project blink --path experiments/blink
-cd experiments/blink
-idf.py set-target esp32s3
-idf.py menuconfig
 idf.py build
 idf.py -p /dev/ttyACM0 flash monitor
 ```
 
 Replace `/dev/ttyACM0` with the port shown when the board is connected. Exit
 the serial monitor with `Ctrl-]`. `idf.py flash` will build first, so the
-separate build command is optional after initial setup.
+separate build command is optional after initial setup. On boot, the firmware
+logs `Hello, world from Zig on ESP32-S3!`.
 
-## Using Zig in firmware
+The project is fixed to the ESP32-S3 target in its top-level `CMakeLists.txt`.
+Its ESP-IDF `main` component compiles `main/hello.zig` to an Xtensa object with
+the pinned Zig compiler, then links that object into the firmware. The C entry
+point only calls the exported Zig function and passes its result to ESP-IDF's
+logging API, keeping the boundary with ESP-IDF explicit and small.
 
-The included Zig fork supports the ESP32-S3 target as:
+To discard all generated configuration and build output before rebuilding:
 
 ```sh
-zig build-obj source.zig -target xtensa-freestanding-none -mcpu=esp32s3
+idf.py fullclean
+idf.py build
 ```
 
-Zig-to-ESP-IDF integration is experimental. The practical approach is to
-compile Zig into an object or static library, export a C ABI (`export fn`), and
-link it from an ESP-IDF component. Keep the ESP-IDF entry point and hardware API
-calls in a thin C component initially; this provides a stable boundary while
-the Zig Xtensa toolchain evolves. A fuller reference integration is
-[`zig-esp-idf-sample`](https://github.com/kassane/zig-esp-idf-sample).
+Zig-to-ESP-IDF integration and the Xtensa Zig backend are experimental. New
+experiments can follow the same pattern: put portable logic behind exported C
+ABI functions in Zig and keep calls into ESP-IDF in a thin C component.
 
 ## USB access on Linux
 
