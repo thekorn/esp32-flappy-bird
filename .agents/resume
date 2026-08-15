@@ -5,6 +5,6 @@ echo "[resume] Ensuring the Nix daemon is available"
 sudo systemctl start nix-daemon.socket
 sudo chmod 0711 /nix/var/nix/daemon-socket
 
-echo "[resume] Verifying nix-shell"
-nix-shell --version
-nix --extra-experimental-features nix-command store ping
+echo "[resume] Verifying Nix flakes"
+nix store ping
+nix flake --help >/dev/null

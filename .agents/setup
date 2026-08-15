@@ -7,14 +7,21 @@ if ! dpkg-query -W -f='${Status}' nix-bin 2>/dev/null | grep -Fq 'install ok ins
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nix-bin
 fi
 
+echo "[setup] Enabling Nix flakes"
+nix_features="extra-experimental-features = nix-command flakes"
+if ! grep -Fqx "$nix_features" /etc/nix/nix.conf; then
+  printf '\n%s\n' "$nix_features" | sudo tee -a /etc/nix/nix.conf >/dev/null
+fi
+
 echo "[setup] Ensuring the Nix daemon is available"
 sudo systemctl enable --now nix-daemon.socket
 # Debian restricts this directory to a group that the already-running Amp
 # process cannot inherit until its next login.
 sudo chmod 0711 /nix/var/nix/daemon-socket
 
-echo "[setup] Verifying nix-shell and the Nix store"
-nix-shell --version
-nix --extra-experimental-features nix-command store ping
+echo "[setup] Verifying the flake development environment"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+nix store ping
+nix develop "path:$repo_root" --command true
 
 echo "[setup] Complete"
