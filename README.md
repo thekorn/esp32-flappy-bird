@@ -79,8 +79,8 @@ official schematic and demo.
 ### Prerequisites
 
 Install [Nix](https://nixos.org/download/) with flakes enabled. The flake
-supports x86_64 and ARM64 Linux and supplies ESP-IDF, the ESP32-S3 GCC
-toolchain, esptool, OpenOCD, and the Xtensa Zig compiler.
+supports x86_64 and ARM64 Linux plus ARM64 macOS, and supplies ESP-IDF, the
+ESP32-S3 GCC toolchain, esptool, OpenOCD, and the Xtensa Zig compiler.
 
 Enter the development environment from the repository root:
 
