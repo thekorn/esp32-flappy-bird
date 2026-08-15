@@ -24,7 +24,7 @@ LVGL draw buffers, reads the touch controller, and wraps the few configuration-
 sensitive LVGL inline functions used by Zig.
 
 [`build.zig`](build.zig) owns compilation of the Zig application object.
-ESP-IDF's CMake build invokes it before linking that object with the platform
+The ESP-IDF CMake build invokes it before linking that object with the platform
 adapter and the required ESP-IDF components.
 
 The build uses:
@@ -38,7 +38,7 @@ The build uses:
 ## Hardware
 
 The target is the **Waveshare ESP32-S3-Touch-LCD-1.47**, standard version
-without pre-soldered pinheaders (**SKU 31202**):
+without pre-soldered pin headers (**SKU 31202**):
 
 - ESP32-S3R8, dual-core Xtensa LX7 at up to 240 MHz;
 - 16 MB flash and 8 MB octal PSRAM;
@@ -71,8 +71,8 @@ uses an ST7789 display controller and a different pinout.
 | Touch interrupt | 48 |
 
 The touch interrupt is wired but the current firmware polls the controller.
-The GPIO assignments and JD9853 initialization sequence follow Waveshare's
-official schematic and demo.
+The GPIO assignments and JD9853 initialization sequence follow the official
+Waveshare schematic and demo.
 
 ## Build and run
 
@@ -123,7 +123,7 @@ zig build run -Dsimulator=true
 The simulator validates game behavior and the LVGL layout, but not the ESP32,
 physical display, or touch-controller integration. Its SDL3 lifecycle, rendering,
 input, and timing are implemented in [`simulator/main.zig`](simulator/main.zig);
-the small C binding only adapts LVGL's configuration-dependent bitfield structs
+the small C binding only adapts configuration-dependent LVGL bitfield structs
 and inline helpers.
 
 To remove generated configuration and build output before rebuilding:

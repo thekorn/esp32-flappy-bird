@@ -2,11 +2,12 @@
   description = "ESP32-S3 experiments with ESP-IDF and Zig";
 
   inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     esp-dev.url = "github:mirrexagon/nixpkgs-esp-dev";
     zls.url = "github:zigtools/zls/master";
   };
 
-  outputs = { zls, esp-dev, ... }:
+  outputs = { nixpkgs, zls, esp-dev, ... }:
     let
       supportedSystems = [
         "x86_64-linux"
@@ -40,7 +41,7 @@
     {
       devShells = forAllSystems (system:
         let
-          pkgs = esp-dev.inputs.nixpkgs.legacyPackages.${system};
+          pkgs = nixpkgs.legacyPackages.${system};
           esp-idf = esp-dev.packages.${system}.esp-idf-xtensa.overrideAttrs (old: {
             # Building the immutable IDF checkout creates a synthetic Git
             # commit. Host-wide signing settings must not affect that build.
@@ -74,10 +75,11 @@
         {
           default = pkgs.mkShell {
             packages = [
+              pkgs.sdl3
+              pkgs.codebook
+              zls.packages.${system}.zls
               esp-idf
               zig-xtensa
-              zls.packages.${system}.zls
-              pkgs.sdl3
             ];
             LVGL_SOURCE_DIR = lvgl-source;
             SDL3_INCLUDE_DIR = "${pkgs.sdl3.dev}/include";

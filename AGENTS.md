@@ -3,7 +3,7 @@
 ## Project and architecture
 
 - This repository targets the Waveshare ESP32-S3-Touch-LCD-1.47, standard
-  version without pinheaders (SKU 31202). It has an ESP32-S3R8, 16 MB flash,
+  version without pin headers (SKU 31202). It has an ESP32-S3R8, 16 MB flash,
   8 MB octal PSRAM, a 172×320 JD9853 LCD, and an AXS5106L touch controller.
 - Keep the application implementation in Zig. `main/main.zig` owns
   `app_main`, UI state, and application behavior.
@@ -22,6 +22,8 @@
   ESP-IDF or Zig versions.
 - Build with `nix develop -c idf.py build`.
 - Use `nix flake check --no-build` when changing the flake.
+- Before every commit, run `codebook-lsp lint --unique -s .` and ensure the
+  spell check passes.
 - For firmware changes, verify the build first. Test on real hardware when the
   behavior depends on the LCD, touch controller, boot configuration, or other
   peripherals. Report build verification separately from physical-device

@@ -49,7 +49,7 @@ fn buildSimulator(b: *std.Build, optimize: std.builtin.OptimizeMode) void {
         .optimize = optimize,
         .link_libc = true,
         // Linux's final native link is performed by the Nix C compiler so SDL
-        // and libc come from one coherent runtime. Do not emit Zig's C
+        // and libc come from one coherent runtime. Do not emit Zig C
         // sanitizer calls, whose runtime would otherwise need to be linked.
         .sanitize_c = .off,
     });
