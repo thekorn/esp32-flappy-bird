@@ -1,7 +1,8 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub fn build(b: *std.Build) void {
-    const simulator = b.option(bool, "simulator", "Build for the native Linux simulator") orelse false;
+    const simulator = b.option(bool, "simulator", "Build the native simulator") orelse false;
     const optimize = b.standardOptimizeOption(.{});
 
     if (simulator) {
@@ -47,9 +48,9 @@ fn buildSimulator(b: *std.Build, optimize: std.builtin.OptimizeMode) void {
         .target = target,
         .optimize = optimize,
         .link_libc = true,
-        // The final native link is performed by the Nix C compiler so SDL and
-        // libc come from one coherent runtime. Do not emit Zig's C sanitizer
-        // calls, whose runtime would otherwise need to be linked separately.
+        // Linux's final native link is performed by the Nix C compiler so SDL
+        // and libc come from one coherent runtime. Do not emit Zig's C
+        // sanitizer calls, whose runtime would otherwise need to be linked.
         .sanitize_c = .off,
     });
 
@@ -59,6 +60,7 @@ fn buildSimulator(b: *std.Build, optimize: std.builtin.OptimizeMode) void {
         .optimize = optimize,
     });
     c_bindings.addSystemIncludePath(b.graph.cwdRelativePath(sdl_include_dir));
+    c_bindings.defineCMacro("SDL_DISABLE_ARM_NEON_H", null);
     c_bindings.defineCMacro("SDL_DISABLE_IMMINTRIN_H", null);
     root_module.addImport("c", c_bindings.createModule());
     root_module.addImport("game", b.createModule(.{
@@ -74,6 +76,7 @@ fn buildSimulator(b: *std.Build, optimize: std.builtin.OptimizeMode) void {
         "-std=c11",
         "-DLV_CONF_INCLUDE_SIMPLE",
         "-DLV_LVGL_H_INCLUDE_SIMPLE",
+        "-DSDL_DISABLE_ARM_NEON_H",
         "-DSDL_DISABLE_IMMINTRIN_H",
     };
     root_module.addCSourceFiles(.{
@@ -86,21 +89,34 @@ fn buildSimulator(b: *std.Build, optimize: std.builtin.OptimizeMode) void {
         .flags = c_flags,
     });
 
-    const simulator_object = b.addObject(.{
-        .name = "flappy-bird-simulator-object",
-        .root_module = root_module,
-    });
-    const linker = b.addSystemCommand(&.{"cc"});
-    linker.addArtifactArg(simulator_object);
-    linker.addArg("-o");
-    const simulator = linker.addOutputFileArg("flappy-bird-simulator");
-    linker.addArgs(&.{
-        b.fmt("-L{s}", .{sdl_library_dir}),
-        b.fmt("-Wl,-rpath,{s}", .{sdl_library_dir}),
-        "-Wl,-z,noexecstack",
-        "-lSDL2",
-        "-lm",
-    });
+    const simulator = if (builtin.os.tag == .macos) simulator: {
+        root_module.addLibraryPath(b.graph.cwdRelativePath(sdl_library_dir));
+        root_module.addRPath(b.graph.cwdRelativePath(sdl_library_dir));
+        root_module.linkSystemLibrary("SDL2", .{ .use_pkg_config = .no });
+        root_module.linkSystemLibrary("m", .{});
+        const executable = b.addExecutable(.{
+            .name = "flappy-bird-simulator",
+            .root_module = root_module,
+        });
+        break :simulator executable.getEmittedBin();
+    } else simulator: {
+        const simulator_object = b.addObject(.{
+            .name = "flappy-bird-simulator-object",
+            .root_module = root_module,
+        });
+        const linker = b.addSystemCommand(&.{"cc"});
+        linker.addArtifactArg(simulator_object);
+        linker.addArg("-o");
+        const output = linker.addOutputFileArg("flappy-bird-simulator");
+        linker.addArgs(&.{
+            b.fmt("-L{s}", .{sdl_library_dir}),
+            b.fmt("-Wl,-rpath,{s}", .{sdl_library_dir}),
+            "-Wl,-z,noexecstack",
+            "-lSDL2",
+            "-lm",
+        });
+        break :simulator output;
+    };
 
     const install_simulator = b.addInstallFileWithDir(simulator, .bin, "flappy-bird-simulator");
     b.getInstallStep().dependOn(&install_simulator.step);

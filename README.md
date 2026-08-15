@@ -109,7 +109,7 @@ After startup, the display should show the Flappy Bird start screen in
 landscape orientation. Tap anywhere to start and tap again whenever the bird
 needs to flap. After a collision, tap to start a new game.
 
-### Linux simulator
+### Native simulator
 
 The same Zig game loop can run in a native 320×172 LVGL/SDL window. Mouse
 clicks and the space bar act as simulated screen taps. From the repository

@@ -134,7 +134,7 @@ export fn platform_run() void {
     c.SDL_Delay(5);
 }
 
-export fn main() c_int {
+pub export fn main() c_int {
     game.app_main();
     return 0;
 }
