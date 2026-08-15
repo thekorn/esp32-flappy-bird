@@ -1,5 +1,7 @@
 # Flappy Bird for ESP32-S3 + Zig + LVGL
 
+![Flappy Bird gameplay](docs/flappy-bird-simulator.gif)
+
 A touch-controlled Flappy Bird game written in Zig for the Waveshare
 ESP32-S3-Touch-LCD-1.47. Hold the device in landscape orientation and tap the
 screen to make the bird flap through the pipes.
@@ -106,6 +108,21 @@ the board and starts the firmware automatically. Exit the monitor with
 After startup, the display should show the Flappy Bird start screen in
 landscape orientation. Tap anywhere to start and tap again whenever the bird
 needs to flap. After a collision, tap to start a new game.
+
+### Linux simulator
+
+The same Zig game loop can run in a native 320×172 LVGL/SDL window. Mouse
+clicks and the space bar act as simulated screen taps. From the repository
+root, enter the Nix environment and build and run it with:
+
+```sh
+cmake -S simulator -B build/simulator -G Ninja
+cmake --build build/simulator
+./build/simulator/flappy-bird-simulator
+```
+
+The simulator validates game behavior and the LVGL layout, but not the ESP32,
+physical display, or touch-controller integration.
 
 To remove generated configuration and build output before rebuilding:
 

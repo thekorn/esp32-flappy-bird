@@ -58,13 +58,19 @@
               runHook postInstall
             '';
           };
+          lvgl-source = pkgs.fetchzip {
+            url = "https://github.com/lvgl/lvgl/archive/refs/tags/v8.4.0.tar.gz";
+            hash = "sha256-9IrcWUUsem3so8trM+0odNWpuqVEdtkqXOfJsV9kFFM=";
+          };
         in
         {
           default = pkgs.mkShell {
             packages = [
               esp-idf
               zig-xtensa
+              pkgs.SDL2
             ];
+            LVGL_SOURCE_DIR = lvgl-source;
             shellHook = ''
               echo "ESP32-S3 environment: ESP-IDF $(idf.py --version | sed 's/^ESP-IDF //'), Zig $(zig version)"
             '';
