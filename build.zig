@@ -39,10 +39,10 @@ fn buildSimulator(b: *std.Build, optimize: std.builtin.OptimizeMode) void {
     const target = b.standardTargetOptions(.{});
     const lvgl_source_dir = b.graph.environ_map.get("LVGL_SOURCE_DIR") orelse
         @panic("LVGL_SOURCE_DIR is not set; run inside `nix develop`");
-    const sdl_include_dir = b.graph.environ_map.get("SDL2_INCLUDE_DIR") orelse
-        @panic("SDL2_INCLUDE_DIR is not set; run inside `nix develop`");
-    const sdl_library_dir = b.graph.environ_map.get("SDL2_LIBRARY_DIR") orelse
-        @panic("SDL2_LIBRARY_DIR is not set; run inside `nix develop`");
+    const sdl_include_dir = b.graph.environ_map.get("SDL3_INCLUDE_DIR") orelse
+        @panic("SDL3_INCLUDE_DIR is not set; run inside `nix develop`");
+    const sdl_library_dir = b.graph.environ_map.get("SDL3_LIBRARY_DIR") orelse
+        @panic("SDL3_LIBRARY_DIR is not set; run inside `nix develop`");
     const root_module = b.createModule(.{
         .root_source_file = b.path("simulator/main.zig"),
         .target = target,
@@ -60,8 +60,6 @@ fn buildSimulator(b: *std.Build, optimize: std.builtin.OptimizeMode) void {
         .optimize = optimize,
     });
     c_bindings.addSystemIncludePath(b.graph.cwdRelativePath(sdl_include_dir));
-    c_bindings.defineCMacro("SDL_DISABLE_ARM_NEON_H", null);
-    c_bindings.defineCMacro("SDL_DISABLE_IMMINTRIN_H", null);
     root_module.addImport("c", c_bindings.createModule());
     root_module.addImport("game", b.createModule(.{
         .root_source_file = b.path("main/main.zig"),
@@ -76,8 +74,6 @@ fn buildSimulator(b: *std.Build, optimize: std.builtin.OptimizeMode) void {
         "-std=c11",
         "-DLV_CONF_INCLUDE_SIMPLE",
         "-DLV_LVGL_H_INCLUDE_SIMPLE",
-        "-DSDL_DISABLE_ARM_NEON_H",
-        "-DSDL_DISABLE_IMMINTRIN_H",
     };
     root_module.addCSourceFiles(.{
         .root = b.graph.cwdRelativePath(lvgl_source_dir),
@@ -92,7 +88,7 @@ fn buildSimulator(b: *std.Build, optimize: std.builtin.OptimizeMode) void {
     const simulator = if (builtin.os.tag == .macos) simulator: {
         root_module.addLibraryPath(b.graph.cwdRelativePath(sdl_library_dir));
         root_module.addRPath(b.graph.cwdRelativePath(sdl_library_dir));
-        root_module.linkSystemLibrary("SDL2", .{ .use_pkg_config = .no });
+        root_module.linkSystemLibrary("SDL3", .{ .use_pkg_config = .no });
         root_module.linkSystemLibrary("m", .{});
         const executable = b.addExecutable(.{
             .name = "flappy-bird-simulator",
@@ -112,7 +108,7 @@ fn buildSimulator(b: *std.Build, optimize: std.builtin.OptimizeMode) void {
             b.fmt("-L{s}", .{sdl_library_dir}),
             b.fmt("-Wl,-rpath,{s}", .{sdl_library_dir}),
             "-Wl,-z,noexecstack",
-            "-lSDL2",
+            "-lSDL3",
             "-lm",
         });
         break :simulator output;

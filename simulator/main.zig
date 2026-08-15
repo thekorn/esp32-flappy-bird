@@ -37,31 +37,26 @@ fn displayFlush(
     );
     if (c.simulator_flush_is_last(driver) != 0) {
         _ = c.SDL_RenderClear(renderer);
-        _ = c.SDL_RenderCopy(renderer, texture, null, null);
-        c.SDL_RenderPresent(renderer);
+        _ = c.SDL_RenderTexture(renderer, texture, null, null);
+        _ = c.SDL_RenderPresent(renderer);
     }
     c.simulator_flush_ready(driver);
 }
 
 export fn platform_init() void {
-    if (c.SDL_Init(c.SDL_INIT_VIDEO | c.SDL_INIT_TIMER) != 0) {
+    if (!c.SDL_Init(c.SDL_INIT_VIDEO)) {
         fail("SDL initialization failed: %s");
     }
 
     window = c.SDL_CreateWindow(
         "Zig Flappy Bird",
-        c.SDL_WINDOWPOS_CENTERED,
-        c.SDL_WINDOWPOS_CENTERED,
         lcd_width * window_scale,
         lcd_height * window_scale,
         0,
     );
     if (window == null) fail("SDL window creation failed: %s");
 
-    renderer = c.SDL_CreateRenderer(window, -1, c.SDL_RENDERER_ACCELERATED);
-    if (renderer == null) {
-        renderer = c.SDL_CreateRenderer(window, -1, c.SDL_RENDERER_SOFTWARE);
-    }
+    renderer = c.SDL_CreateRenderer(window, null);
     if (renderer == null) fail("SDL renderer creation failed: %s");
 
     texture = c.SDL_CreateTexture(
@@ -75,7 +70,7 @@ export fn platform_init() void {
 
     c.simulator_lvgl_init(&pixels, pixels.len, lcd_width, lcd_height, displayFlush);
 
-    previous_tick = c.SDL_GetTicks64();
+    previous_tick = c.SDL_GetTicks();
 }
 
 export fn platform_touch_pressed() u8 {
@@ -103,31 +98,31 @@ export fn platform_obj_set_padding(object: ?*anyopaque, padding: i16) void {
 }
 
 export fn platform_millis() u64 {
-    return c.SDL_GetTicks64();
+    return c.SDL_GetTicks();
 }
 
 export fn platform_run() void {
     var event: c.SDL_Event = undefined;
-    while (c.SDL_PollEvent(&event) != 0) {
+    while (c.SDL_PollEvent(&event)) {
         switch (event.type) {
-            c.SDL_QUIT => c.exit(c.EXIT_SUCCESS),
-            c.SDL_MOUSEBUTTONDOWN => {
+            c.SDL_EVENT_QUIT => c.exit(c.EXIT_SUCCESS),
+            c.SDL_EVENT_MOUSE_BUTTON_DOWN => {
                 if (event.button.button == c.SDL_BUTTON_LEFT) pressed = true;
             },
-            c.SDL_MOUSEBUTTONUP => {
+            c.SDL_EVENT_MOUSE_BUTTON_UP => {
                 if (event.button.button == c.SDL_BUTTON_LEFT) pressed = false;
             },
-            c.SDL_KEYDOWN => {
-                if (event.key.keysym.sym == c.SDLK_SPACE and event.key.repeat == 0) pressed = true;
+            c.SDL_EVENT_KEY_DOWN => {
+                if (event.key.key == c.SDLK_SPACE and !event.key.repeat) pressed = true;
             },
-            c.SDL_KEYUP => {
-                if (event.key.keysym.sym == c.SDLK_SPACE) pressed = false;
+            c.SDL_EVENT_KEY_UP => {
+                if (event.key.key == c.SDLK_SPACE) pressed = false;
             },
             else => {},
         }
     }
 
-    const now = c.SDL_GetTicks64();
+    const now = c.SDL_GetTicks();
     c.simulator_tick_inc(@intCast(now - previous_tick));
     previous_tick = now;
     c.simulator_timer_handler();

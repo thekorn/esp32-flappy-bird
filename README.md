@@ -111,7 +111,7 @@ needs to flap. After a collision, tap to start a new game.
 
 ### Native simulator
 
-The same Zig game loop can run in a native 320×172 LVGL/SDL window. Mouse
+The same Zig game loop can run in a native 320×172 LVGL/SDL3 window. Mouse
 clicks and the space bar act as simulated screen taps. From the repository
 root, enter the Nix environment and build and run it with:
 
@@ -121,7 +121,7 @@ zig build run -Dsimulator=true
 ```
 
 The simulator validates game behavior and the LVGL layout, but not the ESP32,
-physical display, or touch-controller integration. Its SDL lifecycle, rendering,
+physical display, or touch-controller integration. Its SDL3 lifecycle, rendering,
 input, and timing are implemented in [`simulator/main.zig`](simulator/main.zig);
 the small C binding only adapts LVGL's configuration-dependent bitfield structs
 and inline helpers.
