@@ -15,11 +15,11 @@ boots stably with its 8 MB PSRAM detected. Confirm the landscape layout and
 touch gameplay on the physical LCD after flashing, since serial monitoring
 cannot observe either behavior.
 
-The application entry point and UI state machine live in
-[`main/main.zig`](main/main.zig). [`main/platform.c`](main/platform.c) is a thin
-adapter around the C APIs provided by ESP-IDF and LVGL: it initializes the
-display and touch buses, flushes LVGL draw buffers, reads the touch controller,
-and renders the game state supplied by Zig.
+The application entry point, UI construction, rendering, and state machine live
+in [`main/main.zig`](main/main.zig). [`main/platform.c`](main/platform.c) is a
+hardware and C-ABI adapter: it initializes the display and touch buses, flushes
+LVGL draw buffers, reads the touch controller, and wraps the few configuration-
+sensitive LVGL inline functions used by Zig.
 
 [`build.zig`](build.zig) owns compilation of the Zig application object.
 ESP-IDF's CMake build invokes it before linking that object with the platform
