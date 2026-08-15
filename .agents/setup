@@ -7,6 +7,16 @@ if ! dpkg-query -W -f='${Status}' nix-bin 2>/dev/null | grep -Fq 'install ok ins
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nix-bin
 fi
 
+# Debian Bookworm ships Nix 2.8, which cannot evaluate current nixpkgs. Use
+# Nix's binary upgrade mechanism to maintain a recent installation in the
+# system profile, then expose it ahead of Debian's /usr/bin/nix.
+if ! /nix/var/nix/profiles/default/bin/nix --version >/dev/null 2>&1; then
+  echo "[setup] Installing a current Nix in the system profile"
+  sudo nix upgrade-nix -p /nix/var/nix/profiles/default
+fi
+sudo ln -sfn /nix/var/nix/profiles/default/bin/nix /usr/local/bin/nix
+hash -r
+
 echo "[setup] Enabling Nix flakes"
 nix_features="extra-experimental-features = nix-command flakes"
 if ! grep -Fqx "$nix_features" /etc/nix/nix.conf; then
@@ -21,6 +31,7 @@ sudo chmod 0711 /nix/var/nix/daemon-socket
 
 echo "[setup] Verifying the flake development environment"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+nix --version
 nix store ping
 nix develop "path:$repo_root" --command true
 

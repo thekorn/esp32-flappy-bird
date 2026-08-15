@@ -4,7 +4,10 @@ set -euo pipefail
 echo "[resume] Ensuring the Nix daemon is available"
 sudo systemctl start nix-daemon.socket
 sudo chmod 0711 /nix/var/nix/daemon-socket
+sudo ln -sfn /nix/var/nix/profiles/default/bin/nix /usr/local/bin/nix
+hash -r
 
 echo "[resume] Verifying Nix flakes"
+nix --version
 nix store ping
 nix flake --help >/dev/null
