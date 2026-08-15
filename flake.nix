@@ -1,5 +1,5 @@
 {
-  description = "ESP32-S3 experiments with ESP-IDF and Zig";
+  description = "ESP32-S3 experiments with ESP-IDF";
 
   inputs.esp-dev.url = "github:mirrexagon/nixpkgs-esp-dev";
 
@@ -18,16 +18,6 @@
           })
           supportedSystems);
 
-      zigSources = {
-        x86_64-linux = {
-          url = "https://github.com/kassane/zig-espressif-bootstrap/releases/download/0.17.0-xtensa-dev/zig-relsafe-x86_64-linux-musl-baseline.tar.xz";
-          hash = "sha256-5EaQJ74LDdar6oFfBc/ZZ49Kh+n3KGh1CokZA3G9iPI=";
-        };
-        aarch64-linux = {
-          url = "https://github.com/kassane/zig-espressif-bootstrap/releases/download/0.17.0-xtensa-dev/zig-relsafe-aarch64-linux-musl-baseline.tar.xz";
-          hash = "sha256-6mbHxfTfqHcsd2d7ZzIm4nZ4jYnScHjaBAeTZW7tsnQ=";
-        };
-      };
     in
     {
       devShells = forAllSystems (system:
@@ -40,33 +30,14 @@
               export GIT_CONFIG_NOSYSTEM=1
             '' + old.installPhase;
           });
-          zig-xtensa = pkgs.stdenv.mkDerivation {
-            pname = "zig-xtensa";
-            version = "0.17.0-xtensa";
-            src = pkgs.fetchurl zigSources.${system};
-
-            dontConfigure = true;
-            dontBuild = true;
-            dontFixup = true;
-
-            installPhase = ''
-              runHook preInstall
-              mkdir -p "$out/bin" "$out/lib" "$out/doc"
-              cp zig "$out/bin/"
-              cp -r lib/. "$out/lib/"
-              cp -r doc/. "$out/doc/"
-              runHook postInstall
-            '';
-          };
         in
         {
           default = pkgs.mkShell {
             packages = [
               esp-idf
-              zig-xtensa
             ];
             shellHook = ''
-              echo "ESP32-S3 environment: ESP-IDF $(idf.py --version | sed 's/^ESP-IDF //'), Zig $(zig version)"
+              echo "ESP32-S3 environment: ESP-IDF $(idf.py --version | sed 's/^ESP-IDF //')"
             '';
           };
         });

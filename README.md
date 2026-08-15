@@ -1,56 +1,48 @@
-# ESP32-S3 experiments
+# ESP32-S3 LVGL hello world
 
-A reproducible Linux development environment for an ESP32-S3 using
-[ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/)
-and Zig.
+This project targets the **Waveshare ESP32-S3-Touch-LCD-1.47**, standard
+version without pre-soldered pinheaders (SKU 31202). Waveshare's
+[product page](https://www.waveshare.com/esp32-s3-touch-lcd-1.47.htm) and
+[documentation](https://docs.waveshare.com/ESP32-S3-Touch-LCD-1.47) confirm
+the board has:
 
-## Enter the environment
+- an ESP32-S3R8 with 16 MB flash and 8 MB octal PSRAM;
+- a 1.47-inch, 172×320 IPS display driven by a JD9853 over SPI; and
+- an AXS5106L capacitive touch controller connected over I²C.
 
-Install Nix with flakes enabled, then run:
+This is not the similarly named, non-touch `ESP32-S3-LCD-1.47`, which uses a
+different display controller and pinout.
+
+The firmware renders `hello world` in the center of the display using LVGL.
+Touching the display changes the label to `touched` for two seconds, then
+restores `hello world`. The LCD initialization and GPIO assignments follow
+Waveshare's official schematic and demo.
+
+## Build and flash
+
+Install Nix with flakes enabled, then enter the pinned ESP-IDF environment:
 
 ```sh
 nix develop
 ```
 
-The shell contains the ESP32-S3 GCC toolchain, ESP-IDF, `idf.py`, Espressif's
-OpenOCD, and a Zig compiler with the Espressif Xtensa backend. Both x86_64 and
-ARM64 Linux hosts are supported. The lock file pins the complete toolchain.
-
-The ESP32-S3 uses Xtensa. Upstream Zig does not currently support that target,
-so this project deliberately uses the experimental
-[`zig-espressif-bootstrap`](https://github.com/kassane/zig-espressif-bootstrap)
-compiler rather than the ordinary Nixpkgs Zig package.
-
-## Build the Zig hello-world firmware
-
-Inside `nix develop`:
+Build and flash the board:
 
 ```sh
 idf.py build
 idf.py -p /dev/ttyACM0 flash monitor
 ```
 
-Replace `/dev/ttyACM0` with the port shown when the board is connected. Exit
-the serial monitor with `Ctrl-]`. `idf.py flash` will build first, so the
-separate build command is optional after initial setup. On boot, the firmware
-logs `Hello, world from Zig on ESP32-S3!`.
+Replace `/dev/ttyACM0` if the board appears on another port. Exit the serial
+monitor with `Ctrl-]`. The first build downloads the pinned LVGL 8.4.0 managed
+component.
 
-The project is fixed to the ESP32-S3 target in its top-level `CMakeLists.txt`.
-Its ESP-IDF `main` component compiles `main/hello.zig` to an Xtensa object with
-the pinned Zig compiler, then links that object into the firmware. The C entry
-point only calls the exported Zig function and passes its result to ESP-IDF's
-logging API, keeping the boundary with ESP-IDF explicit and small.
-
-To discard all generated configuration and build output before rebuilding:
+To discard generated configuration and build output before rebuilding:
 
 ```sh
 idf.py fullclean
 idf.py build
 ```
-
-Zig-to-ESP-IDF integration and the Xtensa Zig backend are experimental. New
-experiments can follow the same pattern: put portable logic behind exported C
-ABI functions in Zig and keep calls into ESP-IDF in a thin C component.
 
 ## USB access on Linux
 
@@ -60,6 +52,3 @@ user to the serial-device group (usually `dialout`) and log in again:
 ```sh
 sudo usermod -aG dialout "$USER"
 ```
-
-If OpenOCD cannot access the ESP32-S3's built-in USB-JTAG interface, install
-the udev rules documented by ESP-IDF or your board vendor.
