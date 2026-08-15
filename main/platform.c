@@ -45,7 +45,6 @@ static esp_lcd_panel_io_handle_t lcd_io;
 static i2c_master_dev_handle_t touch_device;
 static lv_disp_drv_t display_driver;
 static lv_obj_t *label;
-static lv_timer_t *restore_timer;
 
 static const lcd_init_command_t lcd_init_commands[] = {
     {0x11, {}, 0, 120},
@@ -196,25 +195,8 @@ static void touch_init(void)
     ESP_ERROR_CHECK(i2c_master_bus_add_device(bus, &device_config, &touch_device));
 }
 
-static void restore_hello(lv_timer_t *timer)
+uint8_t platform_touch_pressed(void)
 {
-    lv_label_set_text(label, "hello world");
-    lv_timer_pause(timer);
-}
-
-static void show_touched(void)
-{
-    lv_label_set_text(label, "touched");
-    lv_timer_reset(restore_timer);
-    lv_timer_resume(restore_timer);
-}
-
-static void touch_read(lv_indev_drv_t *driver, lv_indev_data_t *data)
-{
-    static bool was_pressed;
-
-    data->state = LV_INDEV_STATE_RELEASED;
-
     uint8_t touch_data[14];
     const uint8_t register_address = TOUCH_DATA_REGISTER;
     esp_err_t result = i2c_master_transmit(touch_device, &register_address, 1, 100);
@@ -223,24 +205,10 @@ static void touch_read(lv_indev_drv_t *driver, lv_indev_data_t *data)
     }
     if (result != ESP_OK) {
         ESP_LOGW(TAG, "Touch read failed: %s", esp_err_to_name(result));
-        return;
+        return 0;
     }
 
-    if ((touch_data[1] & 0x0f) == 0) {
-        was_pressed = false;
-        return;
-    }
-
-    const uint16_t raw_x = ((touch_data[2] & 0x0f) << 8) | touch_data[3];
-    const uint16_t raw_y = ((touch_data[4] & 0x0f) << 8) | touch_data[5];
-    data->point.x = LCD_WIDTH - 1 - raw_x;
-    data->point.y = raw_y;
-    data->state = LV_INDEV_STATE_PRESSED;
-    if (!was_pressed) {
-        show_touched();
-        ESP_LOGI(TAG, "Touch detected");
-    }
-    was_pressed = true;
+    return (touch_data[1] & 0x0f) != 0;
 }
 
 static void lv_tick(void *arg)
@@ -265,17 +233,9 @@ static void lvgl_init(void)
     display_driver.draw_buf = &draw_buffer;
     lv_disp_drv_register(&display_driver);
 
-    static lv_indev_drv_t input_driver;
-    lv_indev_drv_init(&input_driver);
-    input_driver.type = LV_INDEV_TYPE_POINTER;
-    input_driver.read_cb = touch_read;
-    lv_indev_drv_register(&input_driver);
-
     label = lv_label_create(lv_scr_act());
-    lv_label_set_text(label, "hello world");
+    lv_label_set_text(label, "");
     lv_obj_center(label);
-    restore_timer = lv_timer_create(restore_hello, 2000, NULL);
-    lv_timer_pause(restore_timer);
 
     const esp_timer_create_args_t tick_timer_args = {
         .callback = lv_tick,
@@ -286,20 +246,32 @@ static void lvgl_init(void)
     ESP_ERROR_CHECK(esp_timer_start_periodic(tick_timer, 1000));
 }
 
-void app_main(void)
+void platform_init(void)
 {
-    ESP_LOGI(TAG, "Starting LVGL hello world");
+    ESP_LOGI(TAG, "Starting Zig LVGL hello world");
     lcd_init();
     touch_init();
     lvgl_init();
+}
 
-    while (true) {
-        uint32_t delay_ms = lv_timer_handler();
-        if (delay_ms < 5) {
-            delay_ms = 5;
-        } else if (delay_ms > 20) {
-            delay_ms = 20;
-        }
-        vTaskDelay(pdMS_TO_TICKS(delay_ms));
+void platform_set_label(const char *text)
+{
+    lv_label_set_text(label, text);
+    lv_obj_center(label);
+}
+
+uint64_t platform_millis(void)
+{
+    return esp_timer_get_time() / 1000;
+}
+
+void platform_run(void)
+{
+    uint32_t delay_ms = lv_timer_handler();
+    if (delay_ms < 5) {
+        delay_ms = 5;
+    } else if (delay_ms > 20) {
+        delay_ms = 20;
     }
+    vTaskDelay(pdMS_TO_TICKS(delay_ms));
 }
