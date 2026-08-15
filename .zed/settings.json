@@ -1,0 +1,16 @@
+{
+  "inlay_hints": {
+    "enabled": false,
+  },
+  "format_on_save": "on",
+  "languages": {},
+  "language_servers": ["zls", "codebook", "nixd"],
+  "lsp": {
+    "zls": {
+      "binary": {
+        "path": "nix",
+        "arguments": ["develop", "--command", "zls"],
+      },
+    },
+  },
+}
