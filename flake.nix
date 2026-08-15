@@ -8,6 +8,7 @@
       supportedSystems = [
         "x86_64-linux"
         "aarch64-linux"
+        "aarch64-darwin"
       ];
 
       forAllSystems = function:
@@ -26,6 +27,10 @@
         aarch64-linux = {
           url = "https://github.com/kassane/zig-espressif-bootstrap/releases/download/0.17.0-xtensa-dev/zig-relsafe-aarch64-linux-musl-baseline.tar.xz";
           hash = "sha256-6mbHxfTfqHcsd2d7ZzIm4nZ4jYnScHjaBAeTZW7tsnQ=";
+        };
+        aarch64-darwin = {
+          url = "https://github.com/kassane/zig-espressif-bootstrap/releases/download/0.17.0-xtensa-dev/zig-relsafe-aarch64-macos-baseline.tar.xz";
+          hash = "sha256-NncNcPDankC6Z/2G8f6CjECSm12WN0dkG+nVq8iie3A=";
         };
       };
     in
