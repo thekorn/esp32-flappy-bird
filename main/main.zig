@@ -181,7 +181,7 @@ fn render(bird_y_milli: i32, pipes: [2]Pipe, score: u16, state: GameState) void 
     }
 }
 
-export fn app_main() void {
+pub export fn app_main() void {
     platform_init();
     ui = createUi();
 

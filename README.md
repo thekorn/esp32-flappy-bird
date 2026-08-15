@@ -122,7 +122,10 @@ cmake --build build/simulator
 ```
 
 The simulator validates game behavior and the LVGL layout, but not the ESP32,
-physical display, or touch-controller integration.
+physical display, or touch-controller integration. Its SDL lifecycle, rendering,
+input, and timing are implemented in [`simulator/main.zig`](simulator/main.zig);
+the small C binding only adapts LVGL's configuration-dependent bitfield structs
+and inline helpers.
 
 To remove generated configuration and build output before rebuilding:
 
