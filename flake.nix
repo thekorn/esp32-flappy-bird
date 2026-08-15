@@ -1,9 +1,12 @@
 {
   description = "ESP32-S3 experiments with ESP-IDF and Zig";
 
-  inputs.esp-dev.url = "github:mirrexagon/nixpkgs-esp-dev";
+  inputs = {
+    esp-dev.url = "github:mirrexagon/nixpkgs-esp-dev";
+    zls.url = "github:zigtools/zls/master";
+  };
 
-  outputs = { esp-dev, ... }:
+  outputs = { zls, esp-dev, ... }:
     let
       supportedSystems = [
         "x86_64-linux"
@@ -74,6 +77,7 @@
               esp-idf
               zig-xtensa
               pkgs.SDL2
+              zls.packages.${system}.zls
             ];
             LVGL_SOURCE_DIR = lvgl-source;
             SDL2_INCLUDE_DIR = "${pkgs.SDL2.dev}/include";
