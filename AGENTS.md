@@ -24,8 +24,8 @@
 - Before every commit, run `nix develop -c zig build test` and ensure all Zig
   tests pass.
 - Use `nix flake check --no-build` when changing the flake.
-- Before every commit, run `codebook-lsp lint --unique -s .` and ensure the
-  spell check passes.
+- Before every commit, run `nix develop -c codebook-lsp lint --unique -s .`
+  and ensure the spell check passes.
 - For firmware changes, verify the build first. Test on real hardware when the
   behavior depends on the LCD, touch controller, boot configuration, or other
   peripherals. Report build verification separately from physical-device
