@@ -128,9 +128,9 @@ zig build run -Dsimulator=true
 
 The simulator validates game behavior and the LVGL layout, but not the ESP32,
 physical display, or touch-controller integration. Its SDL3 lifecycle, rendering,
-input, and timing are implemented in [`simulator/main.zig`](simulator/main.zig);
-the small C binding only adapts configuration-dependent LVGL bitfield structs
-and inline helpers.
+input, and timing are implemented in [`simulator/main.zig`](simulator/main.zig).
+The LVGL ABI used by the simulator is defined in
+[`simulator/lvgl.zig`](simulator/lvgl.zig).
 
 To remove generated configuration and build output before rebuilding:
 

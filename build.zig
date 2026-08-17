@@ -76,13 +76,20 @@ fn buildSimulator(b: *std.Build, optimize: std.builtin.OptimizeMode) void {
         .sanitize_c = .off,
     });
 
-    const c_bindings = b.addTranslateC(.{
-        .root_source_file = b.path("simulator/bindings.h"),
+    root_module.addImport("lvgl", b.createModule(.{
+        .root_source_file = b.path("simulator/lvgl.zig"),
+        .target = target,
+        .optimize = optimize,
+    }));
+
+    const sdl_bindings = b.addTranslateC(.{
+        .root_source_file = b.graph.cwdRelativePath(b.pathJoin(&.{ sdl_include_dir, "SDL3", "SDL.h" })),
         .target = target,
         .optimize = optimize,
     });
-    c_bindings.addSystemIncludePath(b.graph.cwdRelativePath(sdl_include_dir));
-    root_module.addImport("c", c_bindings.createModule());
+    sdl_bindings.addSystemIncludePath(b.graph.cwdRelativePath(sdl_include_dir));
+    root_module.addImport("sdl", sdl_bindings.createModule());
+
     root_module.addImport("game", b.createModule(.{
         .root_source_file = b.path("main/main.zig"),
         .target = target,
@@ -100,10 +107,6 @@ fn buildSimulator(b: *std.Build, optimize: std.builtin.OptimizeMode) void {
     root_module.addCSourceFiles(.{
         .root = b.graph.cwdRelativePath(lvgl_source_dir),
         .files = findLvglSources(b, lvgl_source_dir),
-        .flags = c_flags,
-    });
-    root_module.addCSourceFile(.{
-        .file = b.path("simulator/bindings.c"),
         .flags = c_flags,
     });
 
